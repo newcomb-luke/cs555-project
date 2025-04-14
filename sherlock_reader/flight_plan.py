@@ -1,6 +1,7 @@
 import re
 import sys
 import copy
+import os
 from enum import Enum
 
 # This will allow us to access faa_reader
@@ -235,12 +236,12 @@ class FlightPlan:
         try:
             index_before = airway.route.index(before)
         except:
-            raise Exception('Attempted to find location of fix/waypoint in airway route that doesn\'t exist')
+            raise Exception(f'Attempted to find location of fix/waypoint in airway route that doesn\'t exist: Start: {before}, End: {after}, Airway: {airway.route}')
 
         try:
             index_after = airway.route.index(after)
         except:
-            raise Exception('Attempted to find location of fix/waypoint in airway route that doesn\'t exist')
+            raise Exception(f'Attempted to find location of fix/waypoint in airway route that doesn\'t exist: Start: {before}, End: {after}, Airway: {airway.route}')
         
         return index_before < index_after, index_before, index_after
     
@@ -293,24 +294,29 @@ class FlightPlan:
 
 
 class FlightPlanParser:
-    def __init__(self):
+    def __init__(self, data_path: str):
         self.direct_fix_pattern = re.compile(r'\b[A-Z]{3}\d{3}\d{3}')  # Direct fixes (e.g., AIR097030)
         self.star_pattern = re.compile(r'([A-Z]{3,5})(\d)([A-Z]?)')  # STAR (e.g., RAZRR4, CHERI3)
         self.eta_pattern = re.compile(r'([A-Z]{4})/(\d{4})')  # ETA format (e.g., KSJC/0509)
         self.lat_lon_pattern = re.compile(r'\b\d{2,6}[NS]/\d{2,6}[EW]') # Lat/Long fix (e.g., 405812N/0740034W)
         self.waypoint_pattern = re.compile(r'\b[A-Z]{5}\b')  # Waypoints, or generic fixes (e.g., TWAIN, KNGRY)
 
+        airports_path = os.path.join(data_path, 'APT_BASE.csv')
+        fixes_path = os.path.join(data_path, 'FIX_BASE.csv')
+        airways_path = os.path.join(data_path, 'AWY_BASE.csv')
+        navaids_path = os.path.join(data_path, 'NAV_BASE.csv')
+
         airports_reader = AirportsReader()
-        self.airports = airports_reader.read_airports('../data/APT_BASE.csv')
+        self.airports = airports_reader.read_airports(airports_path)
 
         fixes_reader = FixesReader()
-        self.fixes = fixes_reader.read_fixes('../data/FIX_BASE.csv')
+        self.fixes = fixes_reader.read_fixes(fixes_path)
 
         airways_reader = AirwaysReader()
-        self.airways = airways_reader.read_airways('../data/AWY_BASE.csv')
+        self.airways = airways_reader.read_airways(airways_path)
 
         navaids_reader = NavaidsReader()
-        self.navaids = navaids_reader.read_navaids('../data/NAV_BASE.csv')
+        self.navaids = navaids_reader.read_navaids(navaids_path)
     
     def parse(self, flight_plan: str) -> FlightPlan:
         split_elements = flight_plan.split('.')

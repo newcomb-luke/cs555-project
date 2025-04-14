@@ -16,6 +16,7 @@ def main():
         description='Reads in a flight plan converted to lat and long coordiantes and plots the route on a map'
     )
     parser.add_argument('input_path', help='The input flight data .csv format')
+    parser.add_argument('faa_data_path', help='The directory path to the FAA data containing current airports, fixes, airways, etc.')
     parser.add_argument('-n', '--number', default="1", help='The index of the flight to start plotting at')
     parser.add_argument('-a', '--amount', default="10", help='The number of flights after the index to plot')
 
@@ -24,6 +25,10 @@ def main():
     if not os.path.exists(args.input_path):
         print(f'Provided input path: `{args.input_path}` does not exist')
         exit(1)
+
+    if not os.path.exists(args.faa_data_path):
+        print(f'Provided FAA data path: `{args.faa_data_path}` does not exist')
+        exit(2)
     
     number = None
     
@@ -49,7 +54,7 @@ def main():
     us_map.plot(ax)
     grid.plot(ax)
 
-    parser = FlightPlanParser()
+    parser = FlightPlanParser(args.faa_data_path)
 
     flight_data = []
 

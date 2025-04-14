@@ -28,28 +28,32 @@ class TrajectoryDataset(Dataset):
         with open(json_path, 'r') as f:
             data = json.load(f)
             for entry in data["e"]:
-                self.process_entry(entry)
-        
-        sums = torch.zeros((6,), dtype=torch.float32)
-        mins = torch.full((6,), 100000, dtype=torch.float32)
-        maxes = torch.full((6,), -100000, dtype=torch.float32)
-        num = 0
-        
-        for traj in self.trajectories:
-            sums += torch.sum(traj['e'], dim=0)
-            mins = torch.minimum(mins, torch.min(traj['e'], dim=0).values)
-            maxes = torch.maximum(maxes, torch.max(traj['e'], dim=0).values)
-            num += len(traj['e'])
-        
-        averages = sums / num
+                try:
+                    self.process_entry(entry)
+                except ValueError:
+                    pass
 
-        print(f'Averages: {averages}')
-        print(f'Minimums: {mins}')
-        print(f'Maximums: {maxes}')
-
-        exit(1)
+        # Used for data analysis
         
-        random.shuffle(self.trajectories)
+        # sums = torch.zeros((6,), dtype=torch.float32)
+        # mins = torch.full((6,), 100000, dtype=torch.float32)
+        # maxes = torch.full((6,), -100000, dtype=torch.float32)
+        # num = 0
+        
+        # for traj in self.trajectories:
+        #     sums += torch.sum(traj['e'], dim=0)
+        #     mins = torch.minimum(mins, torch.min(traj['e'], dim=0).values)
+        #     maxes = torch.maximum(maxes, torch.max(traj['e'], dim=0).values)
+        #     num += len(traj['e'])
+
+        # averages = sums / num
+        # print(f'Averages: {averages}')
+        # print(f'Minimums: {mins}')
+        # print(f'Maximums: {maxes}')
+
+        # exit(1)
+        
+        # random.shuffle(self.trajectories)
     
     def scale(self, value: float, attr: str):
         assert type(attr) is str and attr in self.attr_names
@@ -88,14 +92,25 @@ class TrajectoryDataset(Dataset):
         start = [start_lat, start_lon]
         dest = [dest_lat, dest_lon]
 
+        waypoint_filler = -2
+        waypoint_context_size = 50
+
+        # Scale the waypoints
+        waypoints = [list(map(float, wp.split(","))) for wp in entry["w"]]
+        wp_scaled = torch.tensor([torch.tensor([self.scale(wp[0], 'lat'), self.scale(wp[1], 'lon')]) for wp in waypoints])
+        num_waypoints = wp_scaled.size(0)
+
+        if num_waypoints < waypoint_context_size:
+            waypoints_padding = torch.full((waypoint_context_size - num_waypoints, 2), waypoint_filler, dtype=wp_scaled.dtype)
+            wp_scaled = torch.cat([wp_scaled, waypoints_padding], dim=0)
+
         trajectory = [list(map(float, p.split(","))) for p in entry["p"]]
 
         # Scale each of the trajectory points
         points = []
         for p in trajectory:
-            # The data files are lon, lat, alt, etc. So lon and lat are swapped
-            point_lon = self.scale(p[0], 'lon')
-            point_lat = self.scale(p[1], 'lat')
+            point_lat = self.scale(p[0], 'lat')
+            point_lon = self.scale(p[1], 'lon')
             point_alt = self.scale(p[2], 'alt')
             point_spdx = self.scale(p[3], 'spdx')
             point_spdy = self.scale(p[4], 'spdy')
@@ -104,12 +119,11 @@ class TrajectoryDataset(Dataset):
             point = [point_lat, point_lon, point_alt, point_spdx, point_spdy, point_spdz]
             points.append(point)
         
+        start_end = torch.tensor([start, dest])
         examples, targets = self.gen_data_from_trajectory(points, self.context_window_size)
-        
-        start_end = torch.tensor(start + dest).unsqueeze(0).expand(len(examples), self.context_window_size, -1)
 
-        for s_e, e, t in zip(start_end, examples, targets):
-            self.trajectories.append({'s_e': s_e, 'e': e, 't': t})
+        for e, t in zip(examples, targets):
+            self.trajectories.append({'s_e': start_end, 'w': wp_scaled, 'e': e, 't': t})
     
     def gen_data_from_trajectory(self, points, context_size: int=10, before_filler: int=-1, after_filler: int=-2):
         window_size = context_size + 1
@@ -172,15 +186,16 @@ class TrajectoryDataset(Dataset):
     
     def collate(self, batch):
         start_end = torch.stack([b[0] for b in batch])
-        example = torch.stack([b[1] for b in batch])
-        target = torch.stack([b[2] for b in batch])
-        return start_end, example, target
+        waypoints = torch.stack([b[1] for b in batch])
+        example = torch.stack([b[2] for b in batch])
+        target = torch.stack([b[3] for b in batch])
+        return start_end, waypoints, example, target
     
     def __len__(self):
         return len(self.trajectories)
 
     def __getitem__(self, idx):
-        return self.trajectories[idx]["s_e"], self.trajectories[idx]["e"], self.trajectories[idx]["t"]
+        return self.trajectories[idx]["s_e"], self.trajectories[idx]['w'], self.trajectories[idx]["e"], self.trajectories[idx]["t"]
 
 
 if __name__ == '__main__':

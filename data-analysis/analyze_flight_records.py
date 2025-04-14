@@ -22,18 +22,24 @@ def main():
 
     print(df.columns)
 
-    print(df['destination'].value_counts())
-    print(df['origin'].value_counts())
+    # Filter where origin and destination both start with 'K'
+    df_filtered = df[
+        df['origin'].astype(str).str.startswith('K') &
+        df['destination'].astype(str).str.startswith('K')
+    ]
 
-    print(df['destination'].apply(lambda d: d.startswith('K')).value_counts())
+    # Count and sort route frequencies
+    route_counts = (
+        df_filtered
+        .groupby(['origin', 'destination'])
+        .size()
+        .reset_index(name='count')
+        .sort_values(by='count', ascending=False)
+    )
 
-    print('======================================')
+    print(route_counts.head(10))
 
-    print(df['estimated_dest'].value_counts())
-    print(df['estimated_origin'].value_counts())
-
-    print(df['ops_type'].value_counts())
-    print(df['aircraft_type'].value_counts().nlargest(20))
+    # PHL to MCO
 
 
 if __name__ == '__main__':

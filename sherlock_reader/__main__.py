@@ -4,6 +4,7 @@ import sys
 import json
 from .data_reader import read_flights, Flight
 from .convert import RawTrajectoryPoint, RawTrajectory, convert_trajectory, TrajectoryPoint
+from .flight_plan import FlightPlanParser
 
 # This will allow us to access faa_reader
 sys.path.append('../')
@@ -24,7 +25,7 @@ def main():
     )
     parser.add_argument('input_path', help='The input Sherlock IFF data in .csv format')
     parser.add_argument('output_path', help='The file path to output continuous full training data into one .json file per input file')
-    parser.add_argument('airports_path', help='The file path to the FAA released list of all airports and related data')
+    parser.add_argument('faa_data_path', help='The directory path to the FAA data containing current airports, fixes, airways, etc.')
     parser.add_argument('-i', '--interval', default="120", help='The interval at which to output data, in seconds. For every 2 minutes, the value is 120')
     parser.add_argument('-a', '--min-altitude', default="18000", help='The minimum altitude for points to be included in the trajectory')
     parser.add_argument('-n', '--min-num-points', default="10", help='The minimum number of points in a valid trajectory')
@@ -35,8 +36,8 @@ def main():
         print(f'Provided input path: `{args.input_path}` does not exist')
         exit(1)
 
-    if not os.path.exists(args.airports_path):
-        print(f'Provided airports path: `{args.airports_path}` does not exist')
+    if not os.path.exists(args.faa_data_path):
+        print(f'Provided FAA data path: `{args.faa_data_path}` does not exist')
         exit(2)
     
     interval = check_float_arg(args.interval, 'interval')
@@ -45,8 +46,11 @@ def main():
 
     config = ValidationConfig(interval, min_altitude, min_num_points)
 
+    airports_path = os.path.join(args.faa_data_path, 'APT_BASE.csv')
     airports_reader = AirportsReader()
-    airports = airports_reader.read_airports(args.airports_path)
+    airports = airports_reader.read_airports(airports_path)
+
+    flight_plan_parser = FlightPlanParser(args.faa_data_path)
 
     input_file_paths = []
     output_file_paths = []
@@ -77,7 +81,11 @@ def main():
     total_num = 0
     
     for input_path, output_path in zip(input_file_paths, output_file_paths):
-        num_valid, total = filter_and_convert_data(input_path, output_path, airports, config)
+        if os.path.exists(output_path):
+            print(f'File {input_path} was already processed, skipping')
+            continue
+
+        num_valid, total = filter_and_convert_data(input_path, output_path, airports, flight_plan_parser, config)
 
         total_num_valid += num_valid
         total_num += total
@@ -85,7 +93,7 @@ def main():
     print(f'Overall for batch: valid {total_num_valid} / {total_num} total')
 
 
-def filter_and_convert_data(input_file_path: str, output_file_path: str, airports: AirportCollection, config: ValidationConfig) -> tuple[int, int]:
+def filter_and_convert_data(input_file_path: str, output_file_path: str, airports: AirportCollection, flight_plan_parser: FlightPlanParser, config: ValidationConfig) -> tuple[int, int]:
 
     with read_flights(input_file_path) as flights:
         entries = []
@@ -95,14 +103,18 @@ def filter_and_convert_data(input_file_path: str, output_file_path: str, airport
         for flight in flights:
             num_total_flights += 1
 
-            data = validate_flight(flight, airports, config)
+            data = validate_flight(flight, airports, flight_plan_parser, config)
 
             if data is None:
                 print(f'Found flight {flight.header.flt_key}...invalid')
                 continue
             
-            source_airport, dest_airport, converted_points = data
+            source_airport, dest_airport, waypoints, converted_points = data
 
+            waypoint_strings = []
+            for waypoint in waypoints:
+                waypoint_string = f'{waypoint[0]},{waypoint[1]}'
+                waypoint_strings.append(waypoint_string)
             
             point_strings = []
             for point in converted_points:
@@ -112,6 +124,7 @@ def filter_and_convert_data(input_file_path: str, output_file_path: str, airport
             # This weird-ish format is meant to save space in the file, since it will be repeated a bunch of times for every entry
             entry = {
                 's': f'{source_airport.latitude},{source_airport.longitude}',
+                'w': waypoint_strings,
                 'd': f'{dest_airport.latitude},{dest_airport.longitude}',
                 'p': point_strings
             }
@@ -129,7 +142,7 @@ def filter_and_convert_data(input_file_path: str, output_file_path: str, airport
         return num_valid_flights, num_total_flights
 
 
-def validate_flight(flight: Flight, airports: AirportCollection, config: ValidationConfig) -> tuple[Airport, Airport, list[TrajectoryPoint]] | None:
+def validate_flight(flight: Flight, airports: AirportCollection, flight_plan_parser: FlightPlanParser, config: ValidationConfig) -> tuple[Airport, Airport, list[TrajectoryPoint]] | None:
     valid_airports = validate_flight_route(flight, airports)
 
     if valid_airports is None:
@@ -137,12 +150,27 @@ def validate_flight(flight: Flight, airports: AirportCollection, config: Validat
     
     source_airport, dest_airport = valid_airports
 
+    # This is really sad, because it essentially filters by what airways and stuff changed from then
+    # until we have our FAA data for, but this is the only way without doing a whole bunch of other stuff
+
+    try:
+        # Read flight plan
+        raw_flight_plans = flight.flight_plan
+        first_plan = raw_flight_plans[0]
+
+        parsed = flight_plan_parser.parse(first_plan.route)
+        expanded = parsed.expand()
+        waypoints = expanded.to_lat_long()
+    except:
+        # Any exception means the flight plan couldn't be parsed, so we just throw it away :(
+        return None
+
     points = validate_flight_points(flight, config)
 
     if points is None:
         return None
     
-    return source_airport, dest_airport, points
+    return source_airport, dest_airport, waypoints, points
 
 
 def validate_flight_points(flight: Flight, config: ValidationConfig) -> list[TrajectoryPoint] | None:
@@ -184,12 +212,17 @@ def validate_flight_route(flight: Flight, airports: AirportCollection) -> tuple[
     dest_airport_id = flight.header.dest
 
     # I think mostly smaller planes have this set, ones that we don't really care about
-    if source_airport_id == '?' or dest_airport_id == '?':
+    if source_airport_id == '?' or dest_airport_id == '?' or source_airport_id == 'unassigned' or dest_airport_id == 'unassigned':
         return None
     
     # Interestingly too, the airports we really care about are the international ones... which start with a 'K' if they are in ICAO format
     # If we want to include the smaller airports, we can remove this later
     if not source_airport_id.startswith('K') or not dest_airport_id.startswith('K'):
+        return None
+    
+    # We only want KPHL to KMCO
+
+    if source_airport_id != 'KPHL' or dest_airport_id != 'KMCO':
         return None
 
     source_airport = check_faa_icao_airport(airports, source_airport_id)
