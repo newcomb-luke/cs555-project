@@ -1,3 +1,9 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Defines grid-based airspace partitioning for plotting and bounding checks
+#===============================================================================================
+
 import json
 import math
 from matplotlib.patches import Rectangle
@@ -14,6 +20,16 @@ class Point:
     
     @staticmethod
     def deserialize(json_dict: dict):
+        """
+        Deserializes a Point from a dictionary.
+
+        Args:
+            json_dict (dict): Dictionary with keys 'latitude' and 'longitude'.
+
+        Returns:
+            Point: Deserialized Point object.
+        """
+
         latitude = json_dict['latitude']
         longitude = json_dict['longitude']
 
@@ -48,26 +64,54 @@ class BoundingBox:
     
     def width(self) -> float:
         """
-        Calculates the width in degrees of longitude
+        Calculates the width of the bounding box in degrees longitude.
+
+        Returns:
+            float: Width in degrees.
         """
         return self.east - self.west
     
     def height(self) -> float:
         """
-        Calculates the height in degrees of latitude
+        Calculates the height of the bounding box in degrees latitude.
+
+        Returns:
+            float: Height in degrees.
         """
         return self.north - self.south
     
     def point_is_in(self, point: Point) -> bool:
+        """
+        Checks whether a point lies inside the bounding box.
+
+        Args:
+            point (Point): The point to check.
+
+        Returns:
+            bool: True if the point is inside the box.
+        """
         return point.longitude >= self.west and point.longitude <= self.east and point.latitude >= self.south and point.latitude <= self.north
     
     @staticmethod
     def from_dict(bbox: dict):
+        """
+        Deserializes a BoundingBox from a dictionary.
+
+        Args:
+            bbox (dict): Dictionary with 'north', 'south', 'east', 'west'.
+
+        Returns:
+            BoundingBox: The constructed bounding box.
+        """
+
         return BoundingBox(bbox['north'], bbox['south'], bbox['east'], bbox['west'])
     
     def plot(self, plot):
         """
-        Plot the grid using Matplotlib
+        Adds this bounding box to a Matplotlib plot.
+
+        Args:
+            plot: A Matplotlib axes instance.
         """
         plot.add_patch(self.to_rectangle())
 
@@ -83,6 +127,16 @@ class GridSquare:
     
     @staticmethod
     def deserialize(json_dict: dict):
+        """
+        Deserializes a GridSquare from a dictionary.
+
+        Args:
+            json_dict (dict): Must contain 'top_left' and 'bottom_right' keys.
+
+        Returns:
+            GridSquare: The deserialized square.
+        """
+
         top_left = Point.deserialize(json_dict['top_left'])
         bottom_right = Point.deserialize(json_dict['bottom_right'])
 
@@ -96,7 +150,10 @@ class GridSquare:
     
     def to_rectangle(self) -> Rectangle:
         """
-        Returns a Matplotlib Rectangle representing this Box which can be directly plotted
+        Converts the grid square to a Matplotlib Rectangle.
+
+        Returns:
+            Rectangle: Rectangle representation.
         """
         bottom_left = (self.top_left.longitude, self.bottom_right.latitude)
         width = math.fabs(self.top_left.longitude - self.bottom_right.longitude)
@@ -116,11 +173,31 @@ class Grid:
     
     @staticmethod
     def deserialize_from_file(path: str):
+        """
+        Deserializes a Grid object from a JSON file.
+
+        Args:
+            path (str): Path to the JSON grid file.
+
+        Returns:
+            Grid: Deserialized Grid object.
+        """
+
         with open(path, 'r') as f:
             return Grid.deserialize(json.load(f))
 
     @staticmethod
     def deserialize(json_dict: dict):
+        """
+        Deserializes a Grid from a JSON-compatible dictionary.
+
+        Args:
+            json_dict (dict): JSON structure with rows of squares and a bounding box.
+
+        Returns:
+            Grid: Reconstructed Grid object.
+        """
+
         rows = []
 
         for json_row in json_dict['rows']:
@@ -139,7 +216,10 @@ class Grid:
     
     def plot(self, plot):
         """
-        Plot the grid using Matplotlib
+        Adds all non-empty grid squares to a Matplotlib plot.
+
+        Args:
+            plot: A Matplotlib axes instance.
         """
         for row in self.rows:
             for square in row:

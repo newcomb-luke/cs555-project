@@ -1,3 +1,9 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Splits a set of JSON files into training, validation, and test subsets
+#===============================================================================================
+
 import json
 import argparse
 import os
@@ -82,6 +88,16 @@ def main():
 
 
 def load_files(json_paths: list[str]) -> list[dict]:
+    """
+    Loads all JSON files into memory.
+
+    Args:
+        json_paths (list[str]): List of file paths.
+
+    Returns:
+        list[dict]: List of parsed JSON dictionaries.
+    """
+
     dicts = []
 
     for path in json_paths:
@@ -93,6 +109,16 @@ def load_files(json_paths: list[str]) -> list[dict]:
 
 
 def files_in_directory(dir: str) -> list[str]:
+    """
+    Gathers all .json file paths in the specified directory.
+
+    Args:
+        dir (str): Path to directory.
+
+    Returns:
+        list[str]: JSON file paths.
+    """
+
     paths = []
 
     for entry in os.scandir(dir):
@@ -103,6 +129,16 @@ def files_in_directory(dir: str) -> list[str]:
 
 
 def join_files(json_data: list[dict]) -> list[dict]:
+    """
+    Extracts and combines all "e" entries from loaded JSON files.
+
+    Args:
+        json_data (list[dict]): List of dictionaries with 'e' key.
+
+    Returns:
+        list[dict]: Flattened list of all entries.
+    """
+
     entries = []
     for file_data in json_data:
         entries.extend(file_data['e'])
@@ -110,6 +146,18 @@ def join_files(json_data: list[dict]) -> list[dict]:
 
 
 def split_data(data: list[dict], num_train: int, num_val: int):
+    """
+    Splits a dataset into training, validation, and test portions.
+
+    Args:
+        data (list[dict]): The complete dataset.
+        num_train (int): Number of entries for training.
+        num_val (int): Number of entries for validation.
+
+    Returns:
+        tuple: (train, validation, test) lists of entries.
+    """
+
     train = data[:num_train]
 
     # Will be split into test and validation
@@ -122,6 +170,14 @@ def split_data(data: list[dict], num_train: int, num_val: int):
 
 
 def write_to_file(entries, output_path: str):
+    """
+    Writes a list of entries to a JSON file in the required format.
+
+    Args:
+        entries (list[dict]): The entries to write.
+        output_path (str): Destination path for output JSON.
+    """
+
     json_dict = {
         'e': entries
     }

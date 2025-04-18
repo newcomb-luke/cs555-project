@@ -1,9 +1,15 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Classes responsible for reading and representing flight record data
+#===============================================================================================
+
 from .csv_tools import CSVReader, peek
 
 
 class Header:
     """
-    Type 2
+    Represents a Type 2 record: general flight metadata and identifiers.
     """
 
     def __init__(self,
@@ -85,7 +91,7 @@ class Header:
 
 class FlightPlan:
     """
-    Type 4
+    Represents a Type 4 record: full flight plan description including routing and altitudes.
     """
 
     def __init__(self,
@@ -163,6 +169,16 @@ class FlightPlan:
 
     @staticmethod
     def from_line(line: list[str]):
+        """
+        Parses a Type 4 flight plan line from the CSV.
+
+        Args:
+            line (list[str]): Tokenized CSV line.
+
+        Returns:
+            FlightPlan: The parsed flight plan entry.
+        """
+
         separated = iter(line)
 
         # Record type, we know this is 3 already
@@ -251,7 +267,7 @@ class FlightPlan:
 
 class TrackPoint:
     """
-    Type 3
+    Represents a Type 3 record: positional fix of the aircraft at a moment in time.
     """
 
     def __init__(self,
@@ -303,6 +319,16 @@ class TrackPoint:
 
     @staticmethod
     def from_line(line: list[str]):
+        """
+        Parses a Type 3 track point line from the CSV.
+
+        Args:
+            line (list[str]): Tokenized CSV line.
+
+        Returns:
+            TrackPoint: The parsed TrackPoint instance.
+        """
+
         separated = iter(line)
 
         # Record type, we know this is 3 already
@@ -363,6 +389,10 @@ class TrackPoint:
 
 
 class Flight:
+    """
+    Represents a single flight composed of header, flight plan, and track points.
+    """
+
     def __init__(self, header: Header, flight_plan: list[FlightPlan], track_points: list[TrackPoint]):
         self.header = header
         self.flight_plan = flight_plan
@@ -370,6 +400,10 @@ class Flight:
 
 
 class FlightsReader:
+    """
+    Reads and yields complete flights from a CSV file, one at a time.
+    """
+
     def __init__(self, path: str):
         self.path = path
         self.reader = CSVReader(path, has_header=False)
@@ -418,5 +452,15 @@ class FlightsReader:
                 else:
                     return Flight(header, flight_plan, track_points)
 
+
 def read_flights(path: str) -> FlightsReader:
+    """
+    Returns a context-managed `FlightsReader` for reading flight data.
+
+    Args:
+        path (str): Path to the CSV file.
+
+    Returns:
+        FlightsReader: A reader object for iterating through flights.
+    """
     return FlightsReader(path)

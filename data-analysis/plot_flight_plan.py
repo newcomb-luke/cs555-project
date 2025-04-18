@@ -1,3 +1,9 @@
+#=====================================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Plots flight plans and actual trajectories from Sherlock IFF data over a map and grid
+#=====================================================================================================
+
 import argparse
 import os
 import sys
@@ -107,6 +113,17 @@ def main():
 
 
 def prune_lat_long(lat_long: list[tuple[float, float]], bounds: BoundingBox) -> list[tuple[float, float]]:
+    """
+    Removes coordinates outside the bounding box.
+
+    Args:
+        lat_long (list): List of (lat, lon) pairs.
+        bounds (BoundingBox): Bounding area to keep points within.
+
+    Returns:
+        list: Filtered coordinates inside bounding box.
+    """
+
     new_list = []
 
     for p in lat_long:
@@ -117,7 +134,17 @@ def prune_lat_long(lat_long: list[tuple[float, float]], bounds: BoundingBox) -> 
 
     return new_list
 
+
 def plot_flight_trajectory(plot, trajectory, lines:bool=True):
+    """
+    Plots a flight trajectory (track points) on the map.
+
+    Args:
+        plot: Matplotlib axes object.
+        trajectory: List of (lat, lon) coordinates.
+        lines (bool): True for line plot, False for scatter.
+    """
+
     points_x = [point[1] for point in trajectory] # Longitude
     points_y = [point[0] for point in trajectory] # Latitude
 
@@ -126,7 +153,17 @@ def plot_flight_trajectory(plot, trajectory, lines:bool=True):
     else:
         plot.scatter(points_x, points_y, alpha=0.5)
 
+
 def plot_flight_plan(plot, plan, lines:bool=True):
+    """
+    Plots an expanded flight plan (parsed route).
+
+    Args:
+        plot: Matplotlib axes object.
+        plan: List of (lat, lon) coordinates from a parsed plan.
+        lines (bool): True for line plot, False for scatter.
+    """
+
     points_x = [point[1] for point in plan] # Longitude
     points_y = [point[0] for point in plan] # Latitude
 
@@ -134,6 +171,7 @@ def plot_flight_plan(plot, plan, lines:bool=True):
         plot.plot(points_x, points_y, alpha=0.5)
     else:
         plot.scatter(points_x, points_y, alpha=0.5)
+
 
 if __name__ == '__main__':
     main()

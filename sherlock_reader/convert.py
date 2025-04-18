@@ -1,12 +1,33 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Classes and utilities for representing and converting raw flight trajectories
+#===============================================================================================
+
+
 import math
 import numpy as np
 
 
 def lerp(a: str, b: str, t: float) -> float:
+    """
+    Linearly interpolates between two numeric strings a and b by a ratio t.
+
+    Args:
+        a (str): The starting value.
+        b (str): The ending value.
+        t (float): Interpolation ratio in [0, 1].
+
+    Returns:
+        float: Interpolated value.
+    """
     return ((float(b) - float(a)) * t) + float(a)
 
 
 class RawTrajectoryPoint:
+    """
+    Represents a raw trajectory point extracted from CSV data.
+    """
     def __init__(self, timestamp: float, latitude: float, longitude: float, altitude: float, ground_speed: float, course: float, rate_of_climb: float):
         self.timestamp = timestamp
         self.latitude = latitude
@@ -18,6 +39,15 @@ class RawTrajectoryPoint:
             
     @staticmethod
     def from_csv(line: list[str]):
+        """
+        Parses a raw trajectory point from a list of CSV string values.
+
+        Args:
+            line (list[str]): CSV fields representing a trajectory point.
+
+        Returns:
+            RawTrajectoryPoint: Parsed object.
+        """
         separated = iter(line)
 
         timestamp = float(next(separated))
@@ -38,11 +68,17 @@ class RawTrajectoryPoint:
 
 
 class RawTrajectory:
+    """
+    Represents a sequence of raw trajectory points.
+    """
     def __init__(self, points: list[RawTrajectoryPoint]):
         self.points = points
 
 
 class TrajectoryPoint:
+    """
+    Represents a processed trajectory point including 3D position and velocity.
+    """
     def __init__(self, latitude: float, longitude: float, altitude: float, speed_x: float, speed_y: float, speed_z: float):
         self.latitude = latitude
         self.longitude = longitude
@@ -53,12 +89,26 @@ class TrajectoryPoint:
     
     def into_np_array(self):
         """
-        Note that longitude is first and latitude is second
+        Converts the trajectory point into a NumPy array.
+        Longitude is first, then latitude, followed by altitude and velocities.
+
+        Returns:
+            np.ndarray: [lon, lat, alt, speed_x, speed_y, speed_z]
         """
         return np.array([self.longitude, self.latitude, self.altitude, self.speed_x, self.speed_y, self.speed_z])
     
     @staticmethod
     def _course_to_speeds(course: float, ground_speed: float) -> tuple[float, float]:
+        """
+        Converts course angle and ground speed to x/y speed components.
+
+        Args:
+            course (float): Direction of travel in degrees.
+            ground_speed (float): Speed over the ground.
+
+        Returns:
+            tuple[float, float]: x and y components of speed.
+        """
         x_speed = math.sin(math.radians(course)) * ground_speed
         y_speed = math.cos(math.radians(course)) * ground_speed
 
@@ -66,6 +116,15 @@ class TrajectoryPoint:
     
     @staticmethod
     def from_raw_point(point: RawTrajectoryPoint):
+        """
+        Converts a RawTrajectoryPoint into a processed TrajectoryPoint.
+
+        Args:
+            point (RawTrajectoryPoint): The raw point to convert.
+
+        Returns:
+            TrajectoryPoint: The processed version including velocity vectors.
+        """
         latitude = point.latitude
         longitude = point.longitude
         altitude = point.altitude
@@ -76,6 +135,10 @@ class TrajectoryPoint:
 
 
 class TrajectoryConverter:
+    """
+    Converts a raw trajectory into evenly spaced interpolated trajectory points.
+    """
+
     def __init__(self, raw_trajectory: RawTrajectory, time_interval_seconds: int):
         self.raw_trajectory = iter(raw_trajectory.points)
         self.time_interval_seconds = time_interval_seconds
@@ -114,6 +177,17 @@ class TrajectoryConverter:
         return interpolated_point
 
     def _lerp_points(self, point_1: RawTrajectoryPoint, point_2: RawTrajectoryPoint, ratio: float) -> TrajectoryPoint:
+        """
+        Interpolates between two raw trajectory points.
+
+        Args:
+            point_1 (RawTrajectoryPoint): The earlier point.
+            point_2 (RawTrajectoryPoint): The later point.
+            ratio (float): Interpolation ratio between the two.
+
+        Returns:
+            TrajectoryPoint: A new interpolated point.
+        """
         converted_point_1 = TrajectoryPoint.from_raw_point(point_1)
         converted_point_2 = TrajectoryPoint.from_raw_point(point_2)
 
@@ -127,4 +201,14 @@ class TrajectoryConverter:
         return TrajectoryPoint(latitude, longitude, altitude, speed_x, speed_y, speed_z)
 
 def convert_trajectory(raw_trajectory: RawTrajectory, time_interval_seconds: float) -> TrajectoryConverter:
+    """
+    Converts a raw trajectory into a generator of interpolated points spaced by a fixed interval.
+
+    Args:
+        raw_trajectory (RawTrajectory): The original flight path data.
+        time_interval_seconds (float): Time interval between points.
+
+    Returns:
+        TrajectoryConverter: An iterable generator for interpolated points.
+    """
     return TrajectoryConverter(raw_trajectory, time_interval_seconds)

@@ -1,3 +1,9 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Classes responsible for representing and reading aircraft flight plans
+#===============================================================================================
+
 import re
 import sys
 import copy
@@ -16,6 +22,9 @@ from faa_reader import Airway as RealAirway
 
 
 class PlanType(Enum):
+    """
+    Enumeration of all possible flight plan item types.
+    """
     AIRPORT = 0
     NAV_AID = 1
     AIRWAY = 2
@@ -28,10 +37,17 @@ class PlanType(Enum):
 
 
 class PlanItem:
+    """
+    Abstract base class for all flight plan items.
+    """
+
     def __init__(self):
         pass
 
     def type(self) -> PlanType:
+        """
+        Returns the type of the plan item.
+        """
         raise NotImplemented()
     
     def __str__(self):
@@ -42,6 +58,9 @@ class PlanItem:
 
 
 class Airport(PlanItem):
+    """
+    Represents an airport in a flight plan.
+    """
     def __init__(self, real: RealAirport):
         super(Airport, self).__init__()
         self.real = real
@@ -60,6 +79,9 @@ class Airport(PlanItem):
 
 
 class Navaid(PlanItem):
+    """
+    Represents a navigational aid in a flight plan.
+    """
     def __init__(self, real: RealNavaid):
         super(Navaid, self).__init__()
         self.real = real
@@ -78,6 +100,9 @@ class Navaid(PlanItem):
 
 
 class Airway(PlanItem):
+    """
+    Represents an airway in a flight plan.
+    """
     def __init__(self, real: RealAirway, route: list[PlanItem]):
         super(Airway, self).__init__()
         self.real = real
@@ -97,6 +122,9 @@ class Airway(PlanItem):
 
 
 class Waypoint(PlanItem):
+    """
+    Represents a generic waypoint in a flight plan.
+    """
     def __init__(self, real: Fix):
         super(Waypoint, self).__init__()
         self.real = real
@@ -200,13 +228,22 @@ class Unknown(PlanItem):
 
 
 class FlightPlan:
+    """
+    Represents a parsed and possibly expanded flight plan.
+    """
     def __init__(self, items: list[PlanItem]):
         self._items = items
     
     def items(self) -> list[PlanItem]:
+        """
+        Returns the list of items in the flight plan.
+        """
         return self._items
     
     def expand(self):
+        """
+        Expands airways in the flight plan into their constituent fixes.
+        """
         expanded = []
 
         for i, item in enumerate(self._items):
@@ -223,6 +260,9 @@ class FlightPlan:
         return FlightPlan(expanded)
     
     def _airway_segments_between(self, before: PlanItem, after: PlanItem, airway: Airway) -> list[PlanItem]:
+        """
+        Returns the segment of the airway between two points.
+        """
         forward, index_before, index_after = self._airway_segment_positions(before, after, airway)
 
         if forward:
@@ -233,6 +273,9 @@ class FlightPlan:
         return segments
     
     def _airway_segment_positions(self, before: PlanItem, after: PlanItem, airway: Airway) -> tuple[bool, int, int]:
+        """
+        Finds the positions of two points in an airway and determines the direction.
+        """
         try:
             index_before = airway.route.index(before)
         except:
@@ -246,6 +289,9 @@ class FlightPlan:
         return index_before < index_after, index_before, index_after
     
     def to_lat_long(self) -> list[tuple[float, float]]:
+        """
+        Converts all plan items to a list of latitude and longitude coordinates.
+        """
         points = []
 
         for item in self.items():
@@ -255,6 +301,9 @@ class FlightPlan:
         return points
     
     def _item_to_lat_long(self, item: PlanItem) -> list[tuple[float, float]]:
+        """
+        Helper to extract lat/long from a single item.
+        """
         if item.type() == PlanType.AIRPORT:
             lat = item.real.latitude
             long = item.real.longitude
@@ -294,6 +343,9 @@ class FlightPlan:
 
 
 class FlightPlanParser:
+    """
+    Parses flight plan strings into structured flight plan objects.
+    """
     def __init__(self, data_path: str):
         self.direct_fix_pattern = re.compile(r'\b[A-Z]{3}\d{3}\d{3}')  # Direct fixes (e.g., AIR097030)
         self.star_pattern = re.compile(r'([A-Z]{3,5})(\d)([A-Z]?)')  # STAR (e.g., RAZRR4, CHERI3)
@@ -319,6 +371,9 @@ class FlightPlanParser:
         self.navaids = navaids_reader.read_navaids(navaids_path)
     
     def parse(self, flight_plan: str) -> FlightPlan:
+        """
+        Parses a flight plan string into a structured FlightPlan.
+        """
         split_elements = flight_plan.split('.')
         elements = [elem for elem in split_elements if elem and elem != '/']
 
@@ -339,6 +394,9 @@ class FlightPlanParser:
         return FlightPlan(parsed)
     
     def _parse_source(self, element: str) -> PlanItem:
+        """
+        Parses the first element as the source airport.
+        """
         source = self.airports.get_by_either(element)
 
         if source is None:
@@ -350,6 +408,9 @@ class FlightPlanParser:
     
 
     def _parse_destination(self, element: str) -> PlanItem:
+        """
+        Parses the last element as the destination airport or ETA.
+        """
         dest = self.airports.get_by_either(element)
 
         if dest is None:
@@ -372,6 +433,9 @@ class FlightPlanParser:
 
     
     def _element_to_item(self, element: str) -> PlanItem:
+        """
+        Converts an element string to a PlanItem.
+        """
         if self.waypoint_pattern.match(element):
             fix = self.fixes.get_by_id(element)
 
@@ -415,6 +479,9 @@ class FlightPlanParser:
         return Unknown(element)
     
     def _parse_airway_route(self, airway: RealAirway) -> list[PlanItem]:
+        """
+        Parses the internal route of an airway.
+        """
         route = []
 
         for element in airway.route:

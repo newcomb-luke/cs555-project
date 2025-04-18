@@ -1,6 +1,11 @@
+#=====================================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Finds the most popular trajectories from extracted flight plans
+#=====================================================================================================
+
 import argparse
 import os
-import sys
 import pandas as pd
 
 

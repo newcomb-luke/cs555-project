@@ -1,16 +1,24 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Torch Dataset to generate trajectory training data from serialized flight JSON
+#===============================================================================================
+
 import json
 import torch
-import random
-import numpy as np
 from torch.utils.data import Dataset
 
 
-class TrajectoryDataGenerator:
-    def __init__(self):
-        pass
-
-
 class TrajectoryDataset(Dataset):
+    """
+    PyTorch Dataset class for processing scaled trajectory data from JSON training files.
+    Each data point includes:
+        - start/destination pair
+        - scaled waypoints
+        - sequence of context trajectory points
+        - target next point
+    """
+
     def __init__(self, json_path: str, context_window_size: int=10):
         self.trajectories = []
         self.context_window_size = context_window_size
@@ -18,6 +26,7 @@ class TrajectoryDataset(Dataset):
         self.attr_names = ['lon', 'lat', 'alt', 'spdx', 'spdy', 'spdz']
         self.data_ranges = {
             "lon": { "max": -60.0, "min": -130.0 },  # Sort of surrounds the US
+#            "lon": { "max": -60.0, "min": -86.854306 }, # Cutoff sort of at Nashville, TN
             "lat": { "max": 65.0, "min": 0.0 },
             "alt": { "max": 60000.0, "min": 0.0 },
             "spdx": { "max": 5480.0, "min": -5480.0 },  # The maxium ground speed
@@ -56,23 +65,40 @@ class TrajectoryDataset(Dataset):
         # random.shuffle(self.trajectories)
     
     def scale(self, value: float, attr: str):
+        """
+        Scales a raw value into [0, 1] range using predefined min/max.
+        """
+
         assert type(attr) is str and attr in self.attr_names
         data_range = self.data_ranges[attr]
         scaled = (value - data_range['min']) / (data_range['max'] - data_range['min'])
         return scaled
     
     def unscale(self, value: float, attr: str):
+        """
+        Unscales a normalized value back to real-world coordinates.
+        """
+
         assert type(attr) is str and attr in self.attr_names
         data_range = self.data_ranges[attr]
         unscaled = value * (data_range['max'] - data_range['min']) + data_range['min']
         return unscaled
 
     def coords_in_bounds(self, coords: list[float]) -> bool:
+        """
+        Checks if a latitude/longitude point is inside predefined bounds.
+        """
+
         # Check if we are in bounds for latitude
         return coords[0] <= self.data_ranges['lat']['max'] and coords[0] >= self.data_ranges['lat']['min'] \
                 and coords[1] <= self.data_ranges['lon']['max'] and coords[1] >= self.data_ranges['lon']['min']
     
     def process_entry(self, entry):
+        """
+        Converts a JSON entry into start/dest vectors, waypoints, and trajectory sequences.
+        Adds many samples to the dataset by sliding a context window.
+        """
+
         start = list(map(float, entry["s"].split(",")))
 
         if not self.coords_in_bounds(start):
@@ -126,6 +152,13 @@ class TrajectoryDataset(Dataset):
             self.trajectories.append({'s_e': start_end, 'w': wp_scaled, 'e': e, 't': t})
     
     def gen_data_from_trajectory(self, points, context_size: int=10, before_filler: int=-1, after_filler: int=-2):
+        """
+        Generates fixed-size sliding windows from a trajectory.
+
+        Returns:
+            tuple[Tensor, Tensor]: input sequences and targets
+        """
+
         window_size = context_size + 1
 
         before_filler = [before_filler] * 6
@@ -185,6 +218,13 @@ class TrajectoryDataset(Dataset):
         return torch.tensor(examples), torch.tensor(targets)
     
     def collate(self, batch):
+        """
+        Collate function for DataLoader batching.
+
+        Returns:
+            Tuple[Tensor, Tensor, Tensor, Tensor]: batched inputs.
+        """
+
         start_end = torch.stack([b[0] for b in batch])
         waypoints = torch.stack([b[1] for b in batch])
         example = torch.stack([b[2] for b in batch])
@@ -196,90 +236,3 @@ class TrajectoryDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.trajectories[idx]["s_e"], self.trajectories[idx]['w'], self.trajectories[idx]["e"], self.trajectories[idx]["t"]
-
-
-if __name__ == '__main__':
-    data = {'e': [
-    {
-        's': "1.0,2.0",
-        'd': "3.0,4.0",
-        'p': [
-            "31.0,2.0,3.0,4.0,5.0,6.0",
-            "32.0,2.0,3.0,4.0,5.0,6.0",
-            "33.0,2.0,3.0,4.0,5.0,6.0",
-            "34.0,2.0,3.0,4.0,5.0,6.0",
-            "35.0,2.0,3.0,4.0,5.0,6.0",
-            "36.0,2.0,3.0,4.0,5.0,6.0",
-            "37.0,2.0,3.0,4.0,5.0,6.0",
-        ]
-    },
-    {
-        's': "54.0,2.0",
-        'd': "55.0,4.0",
-        'p': [
-            "41.0,2.0,3.0,4.0,5.0,6.0",
-            "42.0,2.0,3.0,4.0,5.0,6.0",
-            "43.0,2.0,3.0,4.0,5.0,6.0",
-            "44.0,2.0,3.0,4.0,5.0,6.0",
-            "45.0,2.0,3.0,4.0,5.0,6.0",
-            "46.0,2.0,3.0,4.0,5.0,6.0",
-            "47.0,2.0,3.0,4.0,5.0,6.0",
-            "48.0,2.0,3.0,4.0,5.0,6.0",
-            "49.0,2.0,3.0,4.0,5.0,6.0",
-            "50.0,2.0,3.0,4.0,5.0,6.0",
-            "51.0,2.0,3.0,4.0,5.0,6.0",
-        ]
-    },
-    {
-        's': "1.0,2.0",
-        'd': "3.0,4.0",
-        'p': [
-            "1.0,2.0,3.0,4.0,5.0,6.0",
-            "2.0,2.0,3.0,4.0,5.0,6.0",
-            "3.0,2.0,3.0,4.0,5.0,6.0",
-            "4.0,2.0,3.0,4.0,5.0,6.0",
-            "5.0,2.0,3.0,4.0,5.0,6.0",
-            "6.0,2.0,3.0,4.0,5.0,6.0",
-            "7.0,2.0,3.0,4.0,5.0,6.0",
-            "8.0,2.0,3.0,4.0,5.0,6.0",
-            "9.0,2.0,3.0,4.0,5.0,6.0",
-            "10.0,2.0,3.0,4.0,5.0,6.0",
-            "11.0,2.0,3.0,4.0,5.0,6.0",
-            "12.0,2.0,3.0,4.0,5.0,6.0",
-            "13.0,2.0,3.0,4.0,5.0,6.0",
-            "14.0,2.0,3.0,4.0,5.0,6.0",
-            "15.0,2.0,3.0,4.0,5.0,6.0",
-            "16.0,2.0,3.0,4.0,5.0,6.0",
-            "17.0,2.0,3.0,4.0,5.0,6.0",
-        ]
-    }, {
-        's': "5.0,6.0",
-        'd': "7.0,8.0",
-        'p': [
-            "11.0,2.0,3.0,4.0,5.0,6.0",
-            "12.0,2.0,3.0,4.0,5.0,6.0",
-            "13.0,2.0,3.0,4.0,5.0,6.0",
-            "14.0,2.0,3.0,4.0,5.0,6.0",
-            "15.0,2.0,3.0,4.0,5.0,6.0",
-            "16.0,2.0,3.0,4.0,5.0,6.0",
-            "17.0,2.0,3.0,4.0,5.0,6.0",
-            "18.0,2.0,3.0,4.0,5.0,6.0",
-            "19.0,2.0,3.0,4.0,5.0,6.0",
-            "20.0,2.0,3.0,4.0,5.0,6.0",
-            "21.0,2.0,3.0,4.0,5.0,6.0",
-            "22.0,2.0,3.0,4.0,5.0,6.0",
-            "23.0,2.0,3.0,4.0,5.0,6.0",
-            "24.0,2.0,3.0,4.0,5.0,6.0",
-            "25.0,2.0,3.0,4.0,5.0,6.0",
-            "26.0,2.0,3.0,4.0,5.0,6.0",
-            "27.0,2.0,3.0,4.0,5.0,6.0",
-        ]
-    }
-    ]}
-
-    with open('sample.json', 'w') as f:
-        json.dump(data, f)
-
-    loader = TrajectoryDataset('sample.json')
-    
-

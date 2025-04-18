@@ -1,3 +1,9 @@
+#=====================================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Parses and validates Sherlock flight data for model training with FAA-provided context
+#=====================================================================================================
+
 import argparse
 import os
 import sys
@@ -12,6 +18,9 @@ from faa_reader import Airport, AirportCollection, AirportsReader
 
 
 class ValidationConfig:
+    """
+    Stores filtering configuration for trajectory preprocessing.
+    """
     def __init__(self, interval: float, min_altitude: float, min_num_points: int):
         self.interval = interval
         self.min_altitude = min_altitude
@@ -94,6 +103,19 @@ def main():
 
 
 def filter_and_convert_data(input_file_path: str, output_file_path: str, airports: AirportCollection, flight_plan_parser: FlightPlanParser, config: ValidationConfig) -> tuple[int, int]:
+    """
+    Filters and converts all flights in a file, saving valid ones as compact JSON.
+
+    Args:
+        input_file_path (str): Path to Sherlock CSV.
+        output_file_path (str): Path for saving processed JSON.
+        airports (AirportCollection): Reference airport database.
+        flight_plan_parser (FlightPlanParser): Parses textual flight plans.
+        config (ValidationConfig): Filtering parameters.
+
+    Returns:
+        tuple[int, int]: Count of valid flights and total flights processed.
+    """
 
     with read_flights(input_file_path) as flights:
         entries = []
@@ -143,6 +165,13 @@ def filter_and_convert_data(input_file_path: str, output_file_path: str, airport
 
 
 def validate_flight(flight: Flight, airports: AirportCollection, flight_plan_parser: FlightPlanParser, config: ValidationConfig) -> tuple[Airport, Airport, list[TrajectoryPoint]] | None:
+    """
+    Fully validates a single flight for training.
+
+    Returns:
+        tuple containing source, destination, waypoints, and converted trajectory points if valid, else None.
+    """
+
     valid_airports = validate_flight_route(flight, airports)
 
     if valid_airports is None:
@@ -174,6 +203,13 @@ def validate_flight(flight: Flight, airports: AirportCollection, flight_plan_par
 
 
 def validate_flight_points(flight: Flight, config: ValidationConfig) -> list[TrajectoryPoint] | None:
+    """
+    Filters and converts trajectory points for a flight.
+
+    Returns:
+        list of valid TrajectoryPoints or None if the count is below the configured threshold.
+    """
+
     raw_points = []
 
     for track_point in flight.track_points:
@@ -204,6 +240,13 @@ def validate_flight_points(flight: Flight, config: ValidationConfig) -> list[Tra
 
 
 def validate_flight_route(flight: Flight, airports: AirportCollection) -> tuple[Airport, Airport] | None:
+    """
+    Validates the source and destination airports of a flight.
+
+    Returns:
+        Tuple of source and destination Airport objects, or None if invalid.
+    """
+
     # Sherlock actually did some work to determine more or less the "actual" origin and destination airports of a flight
     # and they are considered "estimated". We get them from the header
     # We have debated if we should use those or not, and decided for the meantime to go with the "real" data we know, even if that means
@@ -222,8 +265,8 @@ def validate_flight_route(flight: Flight, airports: AirportCollection) -> tuple[
     
     # We only want KPHL to KMCO
 
-    if source_airport_id != 'KPHL' or dest_airport_id != 'KMCO':
-        return None
+    # if source_airport_id != 'KPHL' or dest_airport_id != 'KMCO':
+    #     return None
 
     source_airport = check_faa_icao_airport(airports, source_airport_id)
     dest_airport = check_faa_icao_airport(airports, dest_airport_id)
@@ -238,6 +281,13 @@ def validate_flight_route(flight: Flight, airports: AirportCollection) -> tuple[
 def check_faa_icao_airport(airports: AirportCollection, airport_id: str) -> Airport | None:
     """
     Checks an AirportCollection for an airport first by ICAO id and then by FAA id, returning None if neither have the airport id
+
+    Args:
+        airports (AirportCollection): Airport lookup table.
+        airport_id (str): ICAO or FAA ID to search.
+
+    Returns:
+        Airport or None if not found.
     """
     airport = airports.get_by_icao(airport_id)
 
@@ -248,6 +298,16 @@ def check_faa_icao_airport(airports: AirportCollection, airport_id: str) -> Airp
 
 
 def check_float_arg(value: str, name: str) -> float:
+    """
+    Validates and converts a command-line string to float.
+
+    Args:
+        value (str): The value to convert.
+        name (str): Argument name (used in error messages).
+
+    Returns:
+        float: Converted float value.
+    """
     try:
         return float(value)
     except ValueError:
@@ -256,6 +316,16 @@ def check_float_arg(value: str, name: str) -> float:
 
 
 def check_int_arg(value: str, name: str) -> int:
+    """
+    Validates and converts a command-line string to int.
+
+    Args:
+        value (str): The value to convert.
+        name (str): Argument name (used in error messages).
+
+    Returns:
+        int: Converted int value.
+    """
     try:
         return int(value)
     except ValueError:

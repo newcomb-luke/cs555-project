@@ -1,3 +1,9 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Main training script for transformer model using processed trajectory JSON data
+#===============================================================================================
+
 import os
 import argparse
 import torch
@@ -103,6 +109,20 @@ def load_model(device, model_path):
 
 
 def calculate_spatial_loss(device, target: torch.Tensor, predicted: torch.Tensor, mse, is_training=True) -> torch.Tensor:
+    """
+    Computes spatial loss with weighted emphasis on the final point.
+
+    Args:
+        device: torch device
+        target: (batch, seq_len, 6) target tensor
+        predicted: (batch, seq_len, 6) predicted tensor
+        mse: MSE loss function
+        is_training: whether training or inference
+
+    Returns:
+        torch.Tensor: computed loss
+    """
+
     context_size = target.shape[1]
 
     if is_training:
@@ -126,7 +146,9 @@ def calculate_spatial_loss(device, target: torch.Tensor, predicted: torch.Tensor
 
 
 def haversine_distance(lat1, lon1, lat2, lon2, radius_km=6371.0):
-    """lat/lon must be in degrees, shape: (batch, seq_len) or (N,)"""
+    """
+    lat/lon must be in degrees, shape: (batch, seq_len) or (N,)
+    """
     lat1 = torch.deg2rad(lat1)
     lon1 = torch.deg2rad(lon1)
     lat2 = torch.deg2rad(lat2)
@@ -221,6 +243,10 @@ def unscale(tensor: torch.Tensor, key: str, data_ranges: dict) -> torch.Tensor:
 
 
 def train_one_epoch(device, model, optimizer, mse, dataloader, epoch: int):
+    """
+    Trains the model for one epoch.
+    """
+
     model.train()
 
     total_loss = 0
@@ -259,9 +285,9 @@ def train_one_epoch(device, model, optimizer, mse, dataloader, epoch: int):
         prediction = model(all_waypoints, input_seq, tgt_padding_mask=tgt_padding_mask)
 
         spatial_loss = calculate_spatial_loss(device, target_seq, prediction, mse, is_training=True)
-        haversine_loss = trajectory_haversine_loss(prediction, target_seq, data_ranges)
+        # haversine_loss = trajectory_haversine_loss(prediction, target_seq, data_ranges)
 
-        loss_backward = spatial_loss + haversine_loss
+        loss_backward = spatial_loss # + haversine_loss
 
         loss_backward.backward()
         optimizer.step()

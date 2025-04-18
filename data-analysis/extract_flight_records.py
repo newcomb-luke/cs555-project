@@ -1,3 +1,9 @@
+#=====================================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Extracts just the flight plans from a large collection of NASA Sherlock data
+#=====================================================================================================
+
 import argparse
 import os
 import sys

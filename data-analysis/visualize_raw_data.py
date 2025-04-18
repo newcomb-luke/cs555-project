@@ -1,8 +1,12 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Visualizes flight data as time-series signals accross the flight
+#===============================================================================================
+
 import argparse
 import os
 import sys
-from datetime import datetime
-import numpy as np
 import matplotlib.pyplot as plt
 
 # This will allow us to access sherlock-reader
@@ -114,8 +118,6 @@ def main():
 
     # plt.legend()
     plt.show()
-
-
 
 
 if __name__ == '__main__':

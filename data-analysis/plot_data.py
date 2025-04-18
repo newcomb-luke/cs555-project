@@ -1,3 +1,9 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Visualizes flight trajectories from training data overlaid on a grid and map
+#===============================================================================================
+
 import argparse
 import os
 import json
@@ -64,7 +70,17 @@ def main():
 
     plt.show()
 
+
 def plot_trajectory(plot, points, lines:bool=True):
+    """
+    Plots a single trajectory on the given Matplotlib plot.
+
+    Args:
+        plot: Matplotlib axes object.
+        points (list): List of [lat, lon, alt, vx, vy, vz] for a single trajectory.
+        lines (bool): Whether to draw lines (True) or points only (False).
+    """
+
     points_x = [point[1] for point in points] # Longitude
     points_y = [point[0] for point in points] # Latitude
 
@@ -72,6 +88,7 @@ def plot_trajectory(plot, points, lines:bool=True):
         plot.plot(points_x, points_y, alpha=0.5)
     else:
         plot.scatter(points_x, points_y, alpha=0.5)
+
 
 if __name__ == '__main__':
     main()

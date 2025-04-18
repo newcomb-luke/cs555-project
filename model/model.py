@@ -1,9 +1,19 @@
+#==================================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Transformer-based model for trajectory prediction from waypoint and past state data
+#==================================================================================================
+
 import math
 import torch
 import torch.nn as nn
 
 
 class PositionalEncoding(nn.Module):
+    """
+    Implements sinusoidal positional encoding for transformer inputs.
+    """
+
     def __init__(self, device, d_model, max_len=500):
         super(PositionalEncoding, self).__init__()
 
@@ -17,10 +27,25 @@ class PositionalEncoding(nn.Module):
         self.pe = pe.unsqueeze(0)  # Shape: (1, max_len, d_model)
 
     def forward(self, x):
+        """
+        Adds positional encodings to input embeddings.
+
+        Args:
+            x (Tensor): Input tensor of shape (batch_size, seq_len, d_model)
+
+        Returns:
+            Tensor: Positional-encoded input
+        """
+
         return x + self.pe[:, :x.size(1), :]
 
 
 class TrajectoryTransformer(nn.Module):
+    """
+    Transformer architecture for flight trajectory prediction.
+    Consumes encoded waypoints and observed trajectory segments to predict next flight state.
+    """
+
     def __init__(self, device, d_model=32, nhead=4, num_encoder_layers=3, num_decoder_layers=4, dim_feedforward=64, dropout=0.1, max_seq_len=10):
         super(TrajectoryTransformer, self).__init__()
         self.device = device
@@ -48,6 +73,18 @@ class TrajectoryTransformer(nn.Module):
         self.output_layer = nn.Linear(d_model, 6)
     
     def forward(self, waypoints, trajectory, tgt_padding_mask=None):
+        """
+        Runs the model forward pass.
+
+        Args:
+            waypoints (Tensor): Tensor of shape (batch, seq_len_wp, 2) with lat/lon waypoints
+            trajectory (Tensor): Tensor of shape (batch, seq_len_obs, 6) with past flight states
+            tgt_padding_mask (Tensor): Optional mask for target padding tokens
+
+        Returns:
+            Tensor: Predicted trajectory point sequences (batch, seq_len_obs, 6)
+        """
+
         # Encoder
         enc_emb = self.encoder_emb(waypoints)
         enc_emb = self.pos_encoder(enc_emb)
@@ -71,7 +108,17 @@ class TrajectoryTransformer(nn.Module):
         return output
     
     def _generate_square_subsequent_mask(self, size, device):
-        """Creates a causal mask with batch_first=True support."""
+        """
+        Creates a causal mask for transformer decoder.
+
+        Args:
+            size (int): Size of the square mask
+            device (torch.device): Device to create the mask on
+
+        Returns:
+            Tensor: (size, size) causal mask
+        """
+
         mask = torch.triu(torch.ones(size, size, device=device), diagonal=1)  # Upper triangular mask
         mask = mask.masked_fill(mask == 1, float('-inf'))  # Fill with -inf for masking
         return mask

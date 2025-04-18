@@ -1,6 +1,16 @@
+#===============================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: Reads and represents navigational aids (NAVAIDs) from FAA data
+#===============================================================================================
+
 import pandas as pd
 
 class Navaid:
+    """
+    Represents a single navigational aid (NAVAID) with an identifier and geographic coordinates.
+    """
+
     def __init__(self, navaid_id: str, latitude: float, longitude: float):
         self.navaid_id = navaid_id
         self.latitude = latitude
@@ -14,6 +24,10 @@ class Navaid:
 
 
 class NavaidCollection:
+    """
+    Stores and indexes multiple Navaid objects for lookup.
+    """
+
     def __init__(self):
         self.navaid_id_map = {}
 
@@ -25,6 +39,10 @@ class NavaidCollection:
 
 
 class NavaidsReader:
+    """
+    Reads a NAVAID dataset from CSV and returns a populated NavaidCollection.
+    """
+
     def __init__(self):
         pass
     

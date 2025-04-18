@@ -1,8 +1,12 @@
-import os
+#==================================================================================================
+# Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
+# Author(s): 
+# Description: A script used for performing one round of real inference using the model
+#==================================================================================================
+
 import json
 import argparse
 import torch
-import torch.nn as nn
 import numpy as np
 from model import TrajectoryTransformer
 import matplotlib.pyplot as plt
@@ -102,7 +106,7 @@ def generate_trajectory(model, device, sample, seq_len):
 
     output_trajectory = [trajectory[-1]]
 
-    total_sequence_len = 100
+    total_sequence_len = 80
 
     model.eval()
     with torch.no_grad():
@@ -139,29 +143,6 @@ def generate_trajectory(model, device, sample, seq_len):
                 trajectory[-1] = next_point
 
                 output_trajectory.append(next_point.clone())
-        
-        # for t in range(total_sequence_len - seq_len):
-        #     # Shift it all over by 1 to the left
-        #     trajectory = trajectory[1:, :]
-        #     # We don't need to do anything to start_end
-
-        #     # Pad with zeros at the end
-        #     padding = torch.zeros((1, 6))
-        #     trajectory = torch.cat([trajectory, padding])
-
-        #     input_seq = trajectory.unsqueeze(0)  # (1, t, 6)
-        #     input_waypoints = waypoints.unsqueeze(0) # (1, 52, 2)
-
-        #     tgt_padding_mask = torch.zeros((seq_len,), dtype=torch.bool).to(device)  # (seq_len,)
-        #     tgt_padding_mask = tgt_padding_mask.unsqueeze(0)  # (batch_size, seq_len)
-
-        #     prediction = model(input_waypoints, input_seq, tgt_padding_mask=tgt_padding_mask)
-        #     prediction = prediction[0][-1]
-
-        #     print(f'{prediction}')
-        #     
-        #     trajectory[-1] = prediction
-        #     output_trajectory.append(prediction)
 
     predicted_trajectory = []
 
@@ -187,7 +168,8 @@ def main():
     args = parser.parse_args()
 
     # Set device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = 'cpu'
 
     # Load trained model
     model = load_model(device, args.model, args.context_size)
