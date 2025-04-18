@@ -81,5 +81,9 @@ python infer.py --model ./output-1/final-checkpoint.pth --data ../data/split/tes
 python eval.py --model ./output-1/final-checkpoint.pth --data ../data/split/test.json
 ```
 
+## Sample Model
+
+A sample trained model checkpoint and small (GitHub-friendly) testing data JSON file are provided under `sample-trained-model/`. This model can be used with either the `infer.py` script or `eval.py` script to perform inference or model evaluation, respectively.
+
 ## Authors
 Developed for CS 555 (Spring 2025) as the final project.
