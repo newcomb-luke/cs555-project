@@ -1,6 +1,6 @@
 #===============================================================================================
 # Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
-# Author(s): 
+# Author(s): Luke, Alex
 # Description: Classes and utilities for representing and converting raw flight trajectories
 #===============================================================================================
 

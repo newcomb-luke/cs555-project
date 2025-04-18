@@ -1,6 +1,6 @@
 #===============================================================================================
 # Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
-# Author(s): 
+# Author(s): Luke, Kayla
 # Description: Main training script for transformer model using processed trajectory JSON data
 #===============================================================================================
 

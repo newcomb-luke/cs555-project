@@ -1,6 +1,6 @@
 #===============================================================================================
 # Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
-# Author(s): 
+# Author(s): Luke, Kayla
 # Description: Defines grid-based airspace partitioning for plotting and bounding checks
 #===============================================================================================
 

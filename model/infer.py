@@ -1,6 +1,6 @@
 #==================================================================================================
 # Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
-# Author(s): 
+# Author(s): Luke, Kayla
 # Description: A script used for performing one round of real inference using the model
 #==================================================================================================
 

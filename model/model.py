@@ -1,6 +1,6 @@
 #==================================================================================================
 # Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
-# Author(s): 
+# Author(s): Luke, Kayla
 # Description: Transformer-based model for trajectory prediction from waypoint and past state data
 #==================================================================================================
 

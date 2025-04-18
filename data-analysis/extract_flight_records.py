@@ -1,6 +1,6 @@
 #=====================================================================================================
 # Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
-# Author(s): 
+# Author(s): Luke, Kayla
 # Description: Extracts just the flight plans from a large collection of NASA Sherlock data
 #=====================================================================================================
 

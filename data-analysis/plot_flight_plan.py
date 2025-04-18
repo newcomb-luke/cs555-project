@@ -1,6 +1,6 @@
 #=====================================================================================================
 # Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
-# Author(s): 
+# Author(s): Luke, Alex
 # Description: Plots flight plans and actual trajectories from Sherlock IFF data over a map and grid
 #=====================================================================================================
 

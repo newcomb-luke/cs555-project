@@ -1,6 +1,6 @@
 #==================================================================================================
 # Project: Predicting Commercial Flight Trajectories Using Transformers for CS 555
-# Author(s): 
+# Author(s): Luke, Kayla
 # Description: A script used for evaluating the performance of the trajectory prediction model
 #==================================================================================================
 
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial.distance import euclidean
 
 
-def load_model(device, model_path, max_seq_len, d_model=256):
+def load_model(device, model_path, max_seq_len, d_model=64):
     """
     Loads a saved transformer model from checkpoint.
 
@@ -172,30 +172,34 @@ def evaluate(model, device, sample, seq_len, data_ranges):
 
     for p in output_trajectory:
         unscaled_point = [unscale(p[i], attr, data_ranges) for i, attr in enumerate(["lat", "lon", "alt", "spdx", "spdy", "spdz"])]
-        print(f'Unscaled predicted point: {unscaled_point}')
+        # print(f'Unscaled predicted point: {unscaled_point}')
         predicted_trajectory.append(unscaled_point)
 
-    print(f'{len(predicted_trajectory)}')
+    # print(f'{len(predicted_trajectory)}')
 
     return predicted_trajectory
+
+
+def evaluate_sample(model, device, sample, seq_len, data_ranges):
+    real_points = [[float(x) for x in p] for p in [s.split(',')[:2] for s in sample['p']]]
+    predicted_trajectory = evaluate(model, device, sample, seq_len, data_ranges)
+    predicted_points = [p[:2] for p in predicted_trajectory[:len(real_points)]]
+    ade = compute_ade(predicted_points, real_points)
+    fde = compute_fde(predicted_points, real_points)
+    return ade, fde, real_points, predicted_points
 
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate trajectory prediction using a trained Transformer model.")
     parser.add_argument('-m', '--model', required=True, help="Path to the trained model checkpoint.")
     parser.add_argument('-d', '--data', required=True, help="Path to the .json file containing samples.")
-    parser.add_argument('-s', '--sample', required=True, type=int, help="Sample index to evaluate.")
+    parser.add_argument('-s', '--sample', type=int, help="Sample index to evaluate, if evaluating only one sample.")
     parser.add_argument('-c', '--context_size', type=int, default=10, help="Context window size of the model.")
 
     args = parser.parse_args()
     device = 'cpu'
 
     model = load_model(device, args.model, args.context_size)
-
-    with open(args.data, 'r') as f:
-        data = json.load(f)
-
-    sample = data['e'][args.sample]
 
     data_ranges = {
         "lon": { "max": -60.0, "min": -130.0 },
@@ -206,31 +210,48 @@ def main():
         "spdz": { "max": 15000.0, "min": -15000.0 },
     }
 
-    # Load ground truth
-    real_points = [[float(x) for x in p] for p in [s.split(',')[:2] for s in sample['p']]]
+    with open(args.data, 'r') as f:
+        data = json.load(f)
 
-    predicted_trajectory = evaluate(model, device, sample, args.context_size, data_ranges)
-    predicted_points = [p[:2] for p in predicted_trajectory[:len(real_points)]]
+    if args.sample is not None:
+        sample = data['e'][args.sample]
+        ade, fde, real_points, predicted_points = evaluate_sample(model, device, sample, args.context_size, data_ranges)
+        print(f"ADE: {ade:.3f}")
+        print(f"FDE: {fde:.3f}")
 
-    ade = compute_ade(predicted_points, real_points)
-    fde = compute_fde(predicted_points, real_points)
+        # Optional visualization
+        pred_x = [p[1] for p in predicted_points]
+        pred_y = [p[0] for p in predicted_points]
+        real_x = [p[1] for p in real_points]
+        real_y = [p[0] for p in real_points]
 
-    print(f"ADE: {ade:.3f}")
-    print(f"FDE: {fde:.3f}")
+        plt.plot(real_x, real_y, label='Real', marker='o')
+        plt.plot(pred_x, pred_y, label='Predicted', marker='x')
+        plt.legend()
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title(f"Trajectory Prediction (Sample {args.sample})")
+        plt.show()
 
-    # Plotting
-    pred_x = [p[1] for p in predicted_points]
-    pred_y = [p[0] for p in predicted_points]
-    real_x = [p[1] for p in real_points]
-    real_y = [p[0] for p in real_points]
+    else:
+        total_ade = 0.0
+        total_fde = 0.0
+        count = 0
 
-    plt.plot(real_x, real_y, label='Real', marker='o')
-    plt.plot(pred_x, pred_y, label='Predicted', marker='x')
-    plt.legend()
-    plt.xlabel("Longitude")
-    plt.ylabel("Latitude")
-    plt.title("Trajectory Prediction vs. Ground Truth")
-    plt.show()
+        print(f'Total samples: {len(data['e'])}')
+
+        for i, sample in enumerate(data['e']):
+            print(f'Evaluating sample: {i + 1}')
+
+            ade, fde, _, _ = evaluate_sample(model, device, sample, args.context_size, data_ranges)
+            total_ade += ade
+            total_fde += fde
+            count += 1
+
+        avg_ade = total_ade / count
+        avg_fde = total_fde / count
+        print(f"Average ADE: {avg_ade:.3f}")
+        print(f"Average FDE: {avg_fde:.3f}")
 
 
 if __name__ == "__main__":
